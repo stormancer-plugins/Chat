@@ -199,15 +199,15 @@ namespace Stormancer.Server.Chat
             return messagesInBase.Concat(messagesInMem).OrderBy(order => order.Date).ToList();
         }
 
-        private Task _flushTask;
+        private Task _flushTask = Task.CompletedTask;
         private object _flushSyncRoot = new object();
         public Task Flush()
         {
-            if (_flushTask == null)
+            if (_flushTask.IsCompleted)
             {
                 lock (_flushSyncRoot)
                 {
-                    if (_flushTask == null)
+                    if (_flushTask.IsCompleted)
                     {
                         _flushTask = FlushImpl();
                     }
@@ -246,7 +246,7 @@ namespace Stormancer.Server.Chat
             batches.Add(batchScrap);
 
             // Make elastic shearch resquest           
-            long currentWeek = GetWeek(DateTime.UtcNow);
+            long currentWeek = GetWeek(DateTime.UtcNow);          
 
             // Todo database Put a fix to get indexes by data
             var esClient = await CreateESClient<ChatMessage>(currentWeek.ToString());
@@ -254,7 +254,6 @@ namespace Stormancer.Server.Chat
             {
                 await esClient.BulkAsync(d => d.IndexMany(messagesLog));
             }
-            _flushTask = null;
         }
         #endregion
     }
